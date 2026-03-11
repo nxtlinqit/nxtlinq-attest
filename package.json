@@ -1,0 +1,35 @@
+{
+  "name": "@bytexbyte/nxtlinq-attest",
+  "version": "1.0.0",
+  "description": "Agent signing and verification for nxtlinq attest; runs entirely locally",
+  "type": "module",
+  "main": "dist/runtime.js",
+  "types": "dist/runtime.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js",
+      "default": "./dist/runtime.js"
+    }
+  },
+  "bin": {
+    "nxtlinq-attest": "./bin/nxtlinq-attest.mjs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "keywords": ["nxtlinq", "attest", "agent", "signing", "verification"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": ["dist", "bin", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

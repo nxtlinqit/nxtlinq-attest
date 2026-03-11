@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nxtlinq attest — Product Spec</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    :root { --bg: #fafafa; --card: #fff; --text: #1a1a1a; --muted: #666; --border: #e0e0e0; --accent: #1565c0; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 2rem; }
+    #content { max-width: 900px; margin: 0 auto; }
+    #content h1 { font-size: 1.75rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+    #content h2 { font-size: 1.35rem; margin-top: 2rem; color: var(--accent); }
+    #content h3 { font-size: 1.15rem; margin-top: 1.5rem; }
+    #content table { border-collapse: collapse; width: 100%; margin: 1rem 0; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.08); border-radius: 8px; overflow: hidden; }
+    #content th, #content td { border: 1px solid var(--border); padding: 0.6rem 0.8rem; text-align: left; }
+    #content th { background: #e3f2fd; font-weight: 600; }
+    #content tr:nth-child(even) { background: #f8f9fa; }
+    #content p { margin: 0.75rem 0; }
+    #content strong { color: var(--text); }
+    #content .mermaid { margin: 1.5rem 0; padding: 1rem; background: var(--card); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.06); display: flex; justify-content: center; overflow-x: auto; }
+    #content .mermaid svg { max-width: 100%; }
+    #content hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    #content code { background: #f0f0f0; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; }
+    #content pre { background: #263238; color: #eeffff; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    #content pre code { background: none; padding: 0; color: inherit; }
+    #content blockquote { border-left: 4px solid var(--accent); margin: 1rem 0; padding-left: 1rem; color: var(--muted); }
+    #load-msg { text-align: center; padding: 3rem; color: var(--muted); }
+    #load-err { background: #ffebee; color: #c62828; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+    .nav-top { max-width: 900px; margin: 0 auto 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+    .nav-top a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+    .lang-switch { display: flex; gap: 0.25rem; }
+    .lang-switch a { padding: 0.35rem 0.75rem; border-radius: 6px; }
+    .lang-switch a.active { background: var(--accent); color: #fff; }
+    .lang-switch a:not(.active):hover { background: #e3f2fd; }
+  </style>
+</head>
+<body>
+  <div class="nav-top">
+    <span id="nav-title" style="color: var(--muted); font-size: 0.9rem;">nxtlinq attest — Product Spec</span>
+      <span class="lang-switch">
+        <a href="?" id="lang-en" class="active" data-lang="en">English</a>
+        <a href="?lang=zh" id="lang-zh" data-lang="zh">中文</a>
+      </span>
+  </div>
+  <div id="content">
+    <div id="load-msg">正在載入規格書…</div>
+  </div>
+
+  <script>
+    (function () {
+      const contentEl = document.getElementById('content');
+      const loadMsg = document.getElementById('load-msg');
+      const PATHS = { zh: 'spec/nxtlinq-attest-product-spec.md', en: 'spec/nxtlinq-attest-product-spec.en.md' };
+
+      function getLang() {
+        const p = new URLSearchParams(location.search);
+        return p.get('lang') === 'zh' ? 'zh' : 'en';
+      }
+
+      function setLang(lang) {
+        const url = new URL(location.href);
+        if (lang === 'en') url.searchParams.delete('lang');
+        else url.searchParams.set('lang', 'zh');
+        history.replaceState({}, '', url);
+        document.getElementById('lang-zh').classList.toggle('active', lang === 'zh');
+        document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+        document.getElementById('nav-title').textContent = lang === 'zh' ? 'nxtlinq attest — 產品規格書' : 'nxtlinq attest — Product Spec';
+        document.title = lang === 'zh' ? 'nxtlinq attest — 產品規格書' : 'nxtlinq attest — Product Spec';
+      }
+
+      function showError(msg) {
+        loadMsg.innerHTML = '';
+        contentEl.innerHTML = '<div id="load-err"><strong>無法載入規格書 / Failed to load spec</strong><p>' + msg + '</p><p>請在<strong>本目錄（docs/）</strong>下執行本地伺服器：</p><ul><li><code>cd docs && npx serve .</code> → <a href="http://localhost:3000/">http://localhost:3000/</a></li><li>或 <code>cd docs && python3 -m http.server 8000</code> → <a href="http://localhost:8000/">http://localhost:8000/</a></li></ul></div>';
+      }
+
+      function slugifyHeading(text) {
+        if (!text || typeof text !== 'string') return '';
+        return text
+          .replace(/[\u300c\u300d"""]/g, '')
+          .replace(/[:\uff1a]/g, '')
+          .replace(/(\d)\.(\d)\s*/g, '$1$2-')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .trim()
+          .replace(/^-|-$/g, '')
+          .toLowerCase();
+      }
+
+      function addHeadingIds(container) {
+        if (!container) return;
+        const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        headings.forEach(function (h) {
+          const slug = slugifyHeading(h.textContent);
+          if (slug) h.id = slug;
+        });
+      }
+
+      function parseMdWithMermaid(md) {
+        const mermaidBlocks = [];
+        const regex = /```mermaid\n([\s\S]*?)```/g;
+        let parsed = md.replace(regex, function (_, code) {
+          const i = mermaidBlocks.length;
+          mermaidBlocks.push(code.trim());
+          return '\n\n<!-- MERMAID_PLACEHOLDER_' + i + ' -->\n\n';
+        });
+        const html = marked.parse(parsed, { gfm: true });
+        let out = html;
+        mermaidBlocks.forEach(function (code, i) {
+          const comment = '<!-- MERMAID_PLACEHOLDER_' + i + ' -->';
+          out = out.replace(comment, '<div class="mermaid">' + code + '</div>');
+        });
+        return out;
+      }
+
+      function loadSpec(lang) {
+        const mdPath = PATHS[lang];
+        loadMsg.style.display = 'block';
+        loadMsg.textContent = lang === 'zh' ? '正在載入規格書…' : 'Loading spec…';
+        contentEl.innerHTML = '';
+        contentEl.appendChild(loadMsg);
+
+        fetch(mdPath)
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text();
+          })
+          .then(function (md) {
+            loadMsg.style.display = 'none';
+            contentEl.innerHTML = parseMdWithMermaid(md);
+            addHeadingIds(contentEl);
+            mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+            return mermaid.run({ nodes: contentEl.querySelectorAll('.mermaid'), suppressErrors: true });
+          })
+          .catch(function (err) {
+            showError(err.message || String(err));
+          });
+      }
+
+      document.getElementById('lang-zh').addEventListener('click', function (e) {
+        e.preventDefault();
+        setLang('zh');
+        loadSpec('zh');
+      });
+      document.getElementById('lang-en').addEventListener('click', function (e) {
+        e.preventDefault();
+        setLang('en');
+        loadSpec('en');
+      });
+
+      const lang = getLang();
+      setLang(lang);
+      loadSpec(lang);
+    })();
+  </script>
+</body>
+</html>

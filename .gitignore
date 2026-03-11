@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Keys and generated attestation (do not commit secrets)
+nxtlinq/
+
+# OS and editor
+.cursor/
+.DS_Store
+*.log
+
+# POC / local demo workspace (optional)
+poc-workspace/
+poc-demo-workspace/
