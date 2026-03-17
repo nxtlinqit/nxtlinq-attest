@@ -1,4 +1,4 @@
-# @bytexbyte/nxtlinq-attest
+# @nxtlinq/attest
 
 Agent signing and verification for nxtlinq attest; runs entirely locally (no blockchain, no external service).
 
@@ -7,7 +7,7 @@ Agent signing and verification for nxtlinq attest; runs entirely locally (no blo
 ### From npm (after publish)
 
 ```bash
-npm install -g @bytexbyte/nxtlinq-attest
+npm install -g @nxtlinq/attest
 ```
 
 Then run: `nxtlinq-attest init`, `nxtlinq-attest sign`, `nxtlinq-attest verify`.
@@ -42,12 +42,12 @@ Then from any directory: `nxtlinq-attest init`, `nxtlinq-attest sign`, `nxtlinq-
 Install as a dependency in your Agent project to read attested scope at runtime (no need to implement file read yourself):
 
 ```bash
-npm install @bytexbyte/nxtlinq-attest
+npm install @nxtlinq/attest
 # or before publish: npm install file:../nxtlinq-attest
 ```
 
 ```ts
-import { getAttestScope, isToolInAttestScope } from '@bytexbyte/nxtlinq-attest';
+import { getAttestScope, isToolInAttestScope } from '@nxtlinq/attest';
 
 const scope = getAttestScope();           // from nxtlinq/agent.manifest.json (cached by cwd)
 if (!isToolInAttestScope(toolName)) {
@@ -85,13 +85,13 @@ nxtlinq-attest verify
 
 | Field | You edit? | Description |
 |-------|-----------|-------------|
-| **name** | Yes | Agent identifier (e.g. `"my-agent"`, `"nxtlinq-ai-agent"`). |
-| **version** | Yes | Semantic version of this agent (e.g. `"1.0.0"`). |
-| **scope** | Yes | List of tools/permissions this agent is allowed to use. Each item is a string like `"tool:ToolName"`. Example: `["tool:ExampleTool", "tool:Search"]`. |
+| **name** | Required | Agent identifier (e.g. `"my-agent"`, `"nxtlinq-ai-agent"`). |
+| **version** | Required | Semantic version of this agent (e.g. `"1.0.0"`). |
+| **scope** | Required | List of tools/permissions this agent is allowed to use. Each item is a string like `"tool:ToolName"`. Example: `["tool:ExampleTool", "tool:Search"]`. |
 | **issuedAt** | Optional | Unix timestamp when the manifest was created. Init sets this; you can leave it or update it. |
-| **publicKey** | No | Filled by init. Do not edit. |
-| **contentHash** | No | Set by `sign`. Do not edit. |
-| **artifactHash** | No | Set by `sign`. Do not edit. |
+| **publicKey** | Prohibited | Filled by init. Do not edit. |
+| **contentHash** | Prohibited | Set by `sign`. Do not edit. |
+| **artifactHash** | Prohibited | Set by `sign`. Do not edit. |
 
 **Summary:** Before running `sign`, edit **name**, **version**, and **scope** to match your agent. Do not change `contentHash`, `artifactHash`, or `publicKey`. All attest files live under `nxtlinq/`.
 
