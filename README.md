@@ -71,6 +71,8 @@ For more detail, see the product spec (view via [README-SPEC.md](README-SPEC.md)
 | `nxtlinq-attest verify` | Verify manifest and artifact integrity (exit 1 on failure) |
 | `nxtlinq-attest scope` | Print manifest scope as JSON to stdout (for any runtime to call) |
 
+**Options:** `-h, --help` — show help; `-v, --version` — print CLI version and exit.
+
 ## Quick start
 
 ```bash

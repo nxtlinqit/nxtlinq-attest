@@ -1,6 +1,6 @@
 {
   "name": "@nxtlinq/attest",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Agent signing and verification for nxtlinq attest; runs entirely locally",
   "type": "module",
   "main": "dist/runtime.js",

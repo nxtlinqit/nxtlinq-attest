@@ -442,6 +442,7 @@ flowchart TB
 | `nxtlinq-attest sign` | Sign manifest (including artifact hash) | Supported |
 | `nxtlinq-attest verify` | Verify manifest and artifact signature and integrity | Supported |
 | `nxtlinq-attest scope` | Print manifest scope array as JSON to stdout; exit 0 on success, 1 on failure (for any runtime to call) | Supported |
+| `nxtlinq-attest -v` / `nxtlinq-attest --version` | Print CLI version and exit | Supported |
 
 ### 8.2 Cryptography and file paths
 

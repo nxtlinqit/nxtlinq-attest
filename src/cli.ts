@@ -5,11 +5,16 @@ import { runInit } from './commands/init.js';
 import { runSign } from './commands/sign.js';
 import { runVerify } from './commands/verify.js';
 import { runScope } from './commands/scope.js';
+import { getCliVersion } from './lib/version.js';
 
 const argv = process.argv.slice(2);
 const cmd = argv[0];
 
 switch (cmd) {
+  case '-v':
+  case '--version':
+    console.log(getCliVersion());
+    break;
   case 'init':
     runInit(cwd());
     break;
@@ -36,7 +41,8 @@ Commands:
   scope    Print manifest scope as JSON to stdout (for any runtime to call)
 
 Options:
-  -h, --help  Show this help.
+  -h, --help     Show this help.
+  -v, --version  Print CLI version and exit.
 `);
     break;
   default:

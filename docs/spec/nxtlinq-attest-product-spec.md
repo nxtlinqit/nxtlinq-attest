@@ -442,6 +442,7 @@ flowchart TB
 | `nxtlinq-attest sign` | 對 manifest（含 artifact hash）簽名 | 支援 |
 | `nxtlinq-attest verify` | 驗證 manifest 與 artifact 簽名及完整性 | 支援 |
 | `nxtlinq-attest scope` | 將 manifest 的 scope 陣列以 JSON 輸出到 stdout；成功 exit 0、失敗 exit 1（供任何執行環境呼叫取得） | 支援 |
+| `nxtlinq-attest -v` / `nxtlinq-attest --version` | 輸出 CLI 版本並結束 | 支援 |
 
 ### 8.2 密碼學與檔案路徑
 
