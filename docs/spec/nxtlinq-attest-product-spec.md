@@ -483,7 +483,7 @@ nxtlinq/
 #### 8.3.3 sign 行為
 
 1. 自 `nxtlinq/` 讀取 `agent.manifest.json`、`private.key`；檢查 manifest 具備 `name`、`version`、`scope`。
-2. **Artifact hash**：以 cwd 為根，遞迴列檔（依路徑排序），排除 8.3.7 所列目錄（如 `node_modules`、`dist`、`__pycache__`、`.venv`、`venv`、`.git`、`nxtlinq` 等）；對每個檔案依序更新 SHA-256（路徑 + `\0` + 內容 + `\0`），得到 `artifactHash`，並將檔案數量寫入 `artifactFileCount`，一併寫入 manifest。
+2. **Artifact hash**：以 cwd 為根，遞迴列檔（依路徑排序），排除 8.3.7 預設目錄及 8.3.8 專案級 `.nxtlinq-attest-ignore`（若有）所列目錄（如 `node_modules`、`dist`、`__pycache__`、`.venv`、`venv`、`.git`、`nxtlinq` 等）；對每個檔案依序更新 SHA-256（路徑 + `\0` + 內容 + `\0`），得到 `artifactHash`，並將檔案數量寫入 `artifactFileCount`，一併寫入 manifest。
 3. 將 `issuedAt` 設為當前 Unix 時間（此次簽署時間）。
 4. 將 `attestCliVersion` 設為當前 nxtlinq-attest CLI 版本（自 package.json 讀取）。
 5. **Content hash**：將 manifest 扣除 `contentHash` 後做 canonical JSON，再 SHA-256 得到 `contentHash`，寫入 manifest。
@@ -496,7 +496,7 @@ nxtlinq/
 2. 解析 manifest 為 JSON；若無效則失敗 exit 1。檢查必要欄位（`name`, `version`, `scope`, `issuedAt`, `publicKey`, `contentHash`, `artifactHash`）與 `scope` 為陣列；缺一或型別不符則失敗 exit 1。
 3. 重算 manifest（扣除 contentHash）的 canonical JSON → SHA-256，與 manifest 內 `contentHash` 比對；不符則失敗 exit 1。
 4. 以公鑰驗證「contentHash 與 sig」；無效則失敗 exit 1。
-5. 以 cwd 為根重算 artifact hash（規則同 sign），與 manifest 內 `artifactHash` 比對；不符則失敗 exit 1。若 manifest 有 `artifactFileCount`，則比對實際檔案數量，不符則失敗 exit 1。
+5. 以 cwd 為根重算 artifact hash（排除規則同 sign，見 8.3.7、8.3.8），與 manifest 內 `artifactHash` 比對；不符則失敗 exit 1。若 manifest 有 `artifactFileCount`，則比對實際檔案數量，不符則失敗 exit 1。
 6. 全部通過則輸出通過訊息（含 `artifactFileCount` 若存在）。若 manifest 有 `attestCliVersion` 且與當前 CLI 版本不同，則於 stderr 提示：可能需更新 nxtlinq-attest 或以當前 CLI 重新 sign。exit 0。
 
 #### 8.3.5 Canonical JSON
@@ -518,9 +518,9 @@ nxtlinq/
 | `artifactFileCount` | — | 由 sign 寫入 | ❌ 勿改 |
 | `attestCliVersion` | 由 init 寫入當前 CLI 版本 | 每次 sign 更新為當前 CLI 版本 | ❌ 勿改 |
 
-#### 8.3.7 Artifact 排除清單
+#### 8.3.7 Artifact 排除清單（預設）
 
-計算 artifactHash 時，下列目錄／檔案不納入（同時涵蓋 Node.js 與 Python 等常見開發環境）：
+計算 artifactHash 時，下列目錄／檔案**預設**不納入（同時涵蓋 Node.js 與 Python 等常見開發環境）；**build 產物（如 dist/）不參與驗證**：
 
 | 類型 | 排除項目 |
 |------|----------|
@@ -529,6 +529,19 @@ nxtlinq/
 | Python | `__pycache__`、`.venv`、`venv`、`.pytest_cache`、`.mypy_cache` |
 
 其餘在 cwd 下的檔案依相對路徑排序後納入 hash。
+
+#### 8.3.8 專案級忽略清單（.nxtlinq-attest-ignore，選用）
+
+專案根目錄可放置 **`.nxtlinq-attest-ignore`**，用於**額外**排除目錄（與 8.3.7 預設清單合併）。每行一個目錄 basename；以 `#` 開頭或空行會略過。例如要再排除 `build`、`output`：
+
+```
+# Build and generated output — not verified
+dist
+build
+output
+```
+
+sign / verify 執行時，若 cwd 下存在此檔則讀取並與預設排除清單合併，使該專案明確排除更多路徑（如 build 產物、輸出目錄），而不改動 CLI 預設行為。
 
 ### 8.4 CI 整合
 

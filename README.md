@@ -95,17 +95,31 @@ nxtlinq-attest verify
 
 **Summary:** Before running `sign`, edit **name**, **version**, and **scope** to match your agent. Do not change `contentHash`, `artifactHash`, or `publicKey`. All attest files live under `nxtlinq/`.
 
+## Artifact verification (build output excluded)
+
+`sign` and `verify` hash only **source and config** files; **build output is never verified**. By default the following are excluded from the artifact hash:
+
+- `node_modules`, `.git`, `nxtlinq`, **`dist`**, `.DS_Store`
+- Python: `__pycache__`, `.venv`, `venv`, `.pytest_cache`, `.mypy_cache`
+
+So `dist/` (and similar build dirs) do not affect verification. To exclude more paths (e.g. `build/`, `out/`, `output/`), add a **`.nxtlinq-attest-ignore`** file in the project root with one directory basename per line (comments with `#` and empty lines are ignored). Example:
+
+```
+# Build and generated output — not verified
+dist
+build
+output
+```
+
 ## Requirements
 
 - Node 22+
 - Works offline; no wallet. Verification fails (exit 1) on tampered manifest or artifact.
 
-## Files (all under `nxtlinq/`)
+## Files
 
-- `nxtlinq/agent.manifest.json` — Agent declaration (name, version, scope, hashes). Do not edit `contentHash` / `artifactHash`; they are set by `sign`.
-- `nxtlinq/agent.manifest.sig` — Signature (hex). Created by `sign`.
-- `nxtlinq/private.key` — **Do not commit.** Used by `sign`.
-- `nxtlinq/public.key` — Public key for verification.
+- **Under `nxtlinq/`:** `agent.manifest.json` (do not edit `contentHash`/`artifactHash`), `agent.manifest.sig`, `private.key` (do not commit), `public.key`.
+- **Optional at project root:** `.nxtlinq-attest-ignore` — one directory basename per line to exclude from artifact verification (e.g. `dist`, `build`, `output`). Build output is already excluded by default; use this to add more.
 
 ## Spec and docs
 

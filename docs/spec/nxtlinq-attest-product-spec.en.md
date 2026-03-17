@@ -483,7 +483,7 @@ nxtlinq/
 #### 8.3.3 sign behavior
 
 1. Read `agent.manifest.json`, `private.key` from `nxtlinq/`; ensure manifest has `name`, `version`, `scope`.
-2. **Artifact hash**: From cwd, list files recursively (sorted by path), exclude directories listed in 8.3.7 (e.g. `node_modules`, `dist`, `__pycache__`, `.venv`, `venv`, `.git`, `nxtlinq`); for each file update SHA-256 (path + `\0` + content + `\0`), produce `artifactHash`, set `artifactFileCount` to the number of files, write both to manifest.
+2. **Artifact hash**: From cwd, list files recursively (sorted by path), exclude directories from 8.3.7 default list and, if present, 8.3.8 project-level `.nxtlinq-attest-ignore` (e.g. `node_modules`, `dist`, `__pycache__`, `.venv`, `venv`, `.git`, `nxtlinq`); for each file update SHA-256 (path + `\0` + content + `\0`), produce `artifactHash`, set `artifactFileCount` to the number of files, write both to manifest.
 3. Set `issuedAt` to current Unix time (time of this signing).
 4. Set `attestCliVersion` to current nxtlinq-attest CLI version (from package.json).
 5. **Content hash**: Canonical JSON of manifest without `contentHash`, then SHA-256 → `contentHash`, write to manifest.
@@ -496,7 +496,7 @@ nxtlinq/
 2. Parse manifest as JSON; if invalid, fail exit 1. Check required fields (`name`, `version`, `scope`, `issuedAt`, `publicKey`, `contentHash`, `artifactHash`) and that `scope` is an array; if any missing or wrong type, fail exit 1.
 3. Recompute canonical JSON (manifest without contentHash) → SHA-256, compare with manifest `contentHash`; on mismatch fail exit 1.
 4. Verify (contentHash, sig) with public key; on invalid fail exit 1.
-5. Recompute artifact hash from cwd (same rules as sign), compare with manifest `artifactHash`; on mismatch fail exit 1. If manifest has `artifactFileCount`, compare with actual file count; on mismatch fail exit 1.
+5. Recompute artifact hash from cwd (same exclude rules as sign; see 8.3.7, 8.3.8), compare with manifest `artifactHash`; on mismatch fail exit 1. If manifest has `artifactFileCount`, compare with actual file count; on mismatch fail exit 1.
 6. If all pass, print success (and `artifactFileCount` if present). If manifest has `attestCliVersion` and it differs from current CLI version, print a note to stderr that the user may need to update nxtlinq-attest or re-sign with the current CLI. Exit 0.
 
 #### 8.3.5 Canonical JSON
@@ -518,9 +518,9 @@ nxtlinq/
 | `artifactFileCount` | — | Filled by sign | ❌ Do not edit |
 | `attestCliVersion` | Set at init to current CLI version | Updated on each sign to current CLI version | ❌ Do not edit |
 
-#### 8.3.7 Artifact exclude list
+#### 8.3.7 Artifact exclude list (default)
 
-When computing artifactHash, the following are excluded (covering both Node.js and Python and other common environments):
+When computing artifactHash, the following are **excluded by default** (Node.js, Python, and other common environments). **Build output (e.g. dist/) is not verified**:
 
 | Type | Excluded |
 |------|----------|
@@ -529,6 +529,19 @@ When computing artifactHash, the following are excluded (covering both Node.js a
 | Python | `__pycache__`, `.venv`, `venv`, `.pytest_cache`, `.mypy_cache` |
 
 All other files under cwd are included, sorted by relative path.
+
+#### 8.3.8 Project-level ignore list (.nxtlinq-attest-ignore, optional)
+
+A **`.nxtlinq-attest-ignore`** file may be placed at the project root to **additionally** exclude directories (merged with the default list in 8.3.7). One directory basename per line; lines starting with `#` and empty lines are skipped. Example to also exclude `build`, `output`:
+
+```
+# Build and generated output — not verified
+dist
+build
+output
+```
+
+When sign or verify runs, if this file exists under cwd it is read and merged with the default exclude list, so a project can explicitly exclude more paths (e.g. build output, output dirs) without changing CLI defaults.
 
 ### 8.4 CI integration
 
