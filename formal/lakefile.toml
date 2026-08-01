@@ -1,0 +1,6 @@
+name = "nxtlinq-authorization"
+version = "0.1.0"
+defaultTargets = ["Nxtlinq"]
+
+[[lean_lib]]
+name = "Nxtlinq"

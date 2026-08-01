@@ -3,9 +3,10 @@ node_modules/
 
 # Build output
 dist/
+.lake/
 
 # Keys and generated attestation (do not commit secrets)
-nxtlinq/
+/nxtlinq/
 
 # OS and editor
 .cursor/

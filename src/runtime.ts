@@ -81,3 +81,19 @@ export function clearAttestScopeCache(cwd?: string): void {
     scopeCache.clear();
   }
 }
+
+export {
+  authorize,
+  executeIfAuthorized,
+  type AuthorizationDenyCode,
+  type AuthorizationDecision,
+  type AuthorizationRequest,
+  type GuardedOperationResult,
+  type GuardOptions,
+} from './guard.js';
+export {
+  verifyProject,
+  type ProjectVerification,
+  type VerificationEvidence,
+  type VerificationFailureCode,
+} from './verification.js';

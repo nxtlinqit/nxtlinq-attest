@@ -71,6 +71,14 @@ Do not enable this compatibility option for security-sensitive runtimes.
 
 For more detail, see the product spec (view via [README-SPEC.md](README-SPEC.md)).
 
+## Formal Verification
+
+The `formal/` directory contains a formally verified Lean model of the core
+authorization invariant: execution requires successful manifest verification,
+successful artifact verification, and a requested capability contained in the
+signed scope. The proof demonstrates the intended authorization semantics; it
+does not claim that the entire TypeScript implementation is formally verified.
+
 ## Commands
 
 | Command | Description |
@@ -79,8 +87,19 @@ For more detail, see the product spec (view via [README-SPEC.md](README-SPEC.md)
 | `nxtlinq-attest sign` | Compute contentHash + artifactHash, sign manifest, write `nxtlinq/agent.manifest.sig` |
 | `nxtlinq-attest verify` | Verify manifest and artifact integrity (exit 1 on failure) |
 | `nxtlinq-attest scope` | Print manifest scope as JSON to stdout (for any runtime to call) |
+| `nxtlinq-attest authorize <capability>` | Verify the project and return a structured allow/deny decision for a host enforcement point |
 
 **Options:** `-h, --help` — show help; `-v, --version` — print CLI version and exit.
+
+## Host enforcement integration
+
+ACP or other hosts can call `nxtlinq-attest authorize tool:write` at an
+observable permission boundary. Exit `0` allows; exit `2` denies. TypeScript
+hosts can use `authorize()` or `executeIfAuthorized()` from the runtime
+package. The latter does not call its downstream handler after a deny.
+
+See [ACP enforcement integration](docs/acp-enforcement-integration.md) for the
+concrete Buzz hook, evidence behavior, and bypass boundaries.
 
 ## Quick start
 

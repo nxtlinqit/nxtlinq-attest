@@ -1,0 +1,54 @@
+[
+  {
+    "id": "valid-signature-valid-artifact-in-scope",
+    "manifestVerified": true,
+    "artifactVerified": true,
+    "signedScope": ["tool:write"],
+    "requestedCapability": "tool:write",
+    "expected": {
+      "outcome": "allow",
+      "code": "scope_allows",
+      "executed": true,
+      "executions": 1
+    }
+  },
+  {
+    "id": "invalid-signature",
+    "manifestVerified": false,
+    "artifactVerified": true,
+    "signedScope": ["tool:write"],
+    "requestedCapability": "tool:write",
+    "expected": {
+      "outcome": "deny",
+      "code": "invalid_signature",
+      "executed": false,
+      "executions": 0
+    }
+  },
+  {
+    "id": "altered-artifact",
+    "manifestVerified": true,
+    "artifactVerified": false,
+    "signedScope": ["tool:write"],
+    "requestedCapability": "tool:write",
+    "expected": {
+      "outcome": "deny",
+      "code": "artifact_digest_mismatch",
+      "executed": false,
+      "executions": 0
+    }
+  },
+  {
+    "id": "capability-out-of-scope",
+    "manifestVerified": true,
+    "artifactVerified": true,
+    "signedScope": ["tool:read"],
+    "requestedCapability": "tool:write",
+    "expected": {
+      "outcome": "deny",
+      "code": "out_of_scope",
+      "executed": false,
+      "executions": 0
+    }
+  }
+]

@@ -1,0 +1,37 @@
+name: Authorization invariant
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject unfinished proofs
+        run: |
+          if grep -R -n -w --include='*.lean' sorry formal/Nxtlinq; then
+            echo 'Lean proof placeholders are not permitted.' >&2
+            exit 1
+          fi
+      - uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          build: true
+          lake-package-directory: formal
+          use-mathlib-cache: false

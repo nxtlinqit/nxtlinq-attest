@@ -5,6 +5,7 @@ import { runInit } from './commands/init.js';
 import { runSign } from './commands/sign.js';
 import { runVerify } from './commands/verify.js';
 import { runScope } from './commands/scope.js';
+import { runAuthorize } from './commands/authorize.js';
 import { getCliVersion } from './lib/version.js';
 
 const argv = process.argv.slice(2);
@@ -27,6 +28,9 @@ switch (cmd) {
   case 'scope':
     runScope(cwd());
     break;
+  case 'authorize':
+    runAuthorize(cwd(), argv[1]);
+    break;
   case undefined:
   case '-h':
   case '--help':
@@ -39,6 +43,8 @@ Commands:
   sign     Sign manifest and artifact, write nxtlinq/agent.manifest.sig
   verify   Verify manifest and artifact integrity (exit 1 on failure)
   scope    Print manifest scope as JSON to stdout (for any runtime to call)
+  authorize <capability>
+           Verify the project and return a structured allow/deny decision
 
 Options:
   -h, --help     Show this help.
