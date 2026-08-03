@@ -5,6 +5,7 @@ import { runInit } from './commands/init.js';
 import { runSign } from './commands/sign.js';
 import { runVerify } from './commands/verify.js';
 import { runScope } from './commands/scope.js';
+import { runAuthorize } from './commands/authorize.js';
 import { getCliVersion } from './lib/version.js';
 
 const argv = process.argv.slice(2);
@@ -27,6 +28,9 @@ switch (cmd) {
   case 'scope':
     runScope(cwd());
     break;
+  case 'authorize':
+    runAuthorize(cwd(), argv[1]);
+    break;
   case undefined:
   case '-h':
   case '--help':
@@ -35,10 +39,16 @@ switch (cmd) {
 Usage: nxtlinq-attest <command>
 
 Commands:
-  init     Initialize nxtlinq/ (keys and agent.manifest.json)
-  sign     Sign manifest and artifact, write nxtlinq/agent.manifest.sig
-  verify   Verify manifest and artifact integrity (exit 1 on failure)
-  scope    Print manifest scope as JSON to stdout (for any runtime to call)
+  init                   Initialize nxtlinq/ (keys and agent.manifest.json)
+  sign                   Sign manifest and artifact, write nxtlinq/agent.manifest.sig
+  verify                 Verify manifest and artifact integrity (exit 1 on failure)
+  scope                  Print manifest scope as JSON to stdout
+  authorize <capability> Verify and authorize one signed capability as JSON
+
+Authorize exit codes:
+  0  allow
+  2  deny
+  1  invalid command usage
 
 Options:
   -h, --help     Show this help.

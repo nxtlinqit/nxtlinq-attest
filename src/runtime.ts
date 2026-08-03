@@ -1,11 +1,24 @@
 /**
- * Runtime API for consumers: read manifest scope and check tool allowance.
- * Use this in your agent app to enforce attested scope without re-implementing file read logic.
+ * Runtime API for consumers: read manifest scope, check tool allowance, and
+ * produce verified authorization decisions.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentManifest } from './lib/manifest.js';
+
+export {
+  authorize,
+  verifyAuthorizationContext,
+  withAuthorization,
+} from './authorization.js';
+
+export type {
+  AuthorizationDecision,
+  AuthorizationEvidence,
+  AuthorizationOutcome,
+  AuthorizationRequest,
+} from './authorization.js';
 
 const NXTLINQ_DIR = 'nxtlinq';
 const MANIFEST_BASENAME = 'agent.manifest.json';
@@ -51,11 +64,9 @@ export function getAttestScope(cwd?: string): string[] {
 }
 
 /**
- * Check if a tool is allowed by the attested manifest scope.
- * Scope entries are typically "tool:ToolName"; we accept either "ToolName" or "tool:ToolName".
- * Missing, invalid, and empty scopes fail closed by default.
- * Set options.allowEmptyScope only when intentionally preserving the legacy
- * permissive behavior during migration.
+ * Check if a tool is allowed by the manifest scope without performing signature
+ * or artifact verification. Use `authorize()` when an enforcement decision is
+ * required.
  */
 export function isToolInAttestScope(
   toolName: string,
