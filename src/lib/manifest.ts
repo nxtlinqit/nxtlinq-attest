@@ -2,12 +2,18 @@
  * Manifest type and I/O.
  */
 
+import type { Capability } from './capability.js';
+
 export interface AgentManifest {
   name: string;
   version: string;
   scope: string[];
+  /** Optional structured authorization ceiling for policy-aware consumers. */
+  capabilities?: Capability[];
   issuedAt: number | string;
   publicKey: string;
+  /** Optional operational identity hint; verifier trust-store keyId remains authoritative. */
+  signerKeyId?: string;
   contentHash: string;
   artifactHash: string;
   /** Number of files included in artifact hash (set by sign, optional for verify) */

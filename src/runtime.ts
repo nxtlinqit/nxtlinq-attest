@@ -7,6 +7,47 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AgentManifest } from './lib/manifest.js';
 
+export {
+  AttestationVerificationError,
+  verifyAttestation,
+  type AttestationVerificationCode,
+  type VerifiedAttestation,
+  type VerifiedAgentManifest,
+  type VerifyAttestationOptions,
+} from './lib/verify.js';
+export {
+  assertCapabilities,
+  type Capability,
+  type CapabilityConstraintValue,
+  type VerifiedCapability,
+} from './lib/capability.js';
+export {
+  signAttestation,
+  type SignAttestationOptions,
+  type SignedAttestation,
+} from './lib/sign.js';
+export {
+  createEd25519PrivateKeySigner,
+  type AttestationSigner,
+} from './lib/signer.js';
+export {
+  loadTrustStore,
+  publicKeyFingerprint,
+  type TrustedSigner,
+  type TrustStore,
+} from './lib/trust.js';
+export {
+  authorizationContextFromVerified,
+  createAuthorizationContext,
+  evaluateAuthorization,
+  executeIfAuthorized,
+  type AuthorizationAction,
+  type AuthorizationContext,
+  type AuthorizationDecision,
+  type AuthorizationExecution,
+  type AuthorizationReason,
+} from './lib/authorization.js';
+
 const NXTLINQ_DIR = 'nxtlinq';
 const MANIFEST_BASENAME = 'agent.manifest.json';
 

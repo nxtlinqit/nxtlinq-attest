@@ -75,17 +75,15 @@ export function computeArtifactHash(rootDir: string, fileList?: string[]): strin
   const hasher = createHash('sha256');
   for (const rel of files) {
     const full = join(rootDir, rel);
-    try {
-      const stat = statSync(full);
-      if (!stat.isFile()) continue;
-      const content = readFileSync(full);
-      hasher.update(rel);
-      hasher.update('\0');
-      hasher.update(content);
-      hasher.update('\0');
-    } catch {
-      // skip missing/unreadable
+    const stat = statSync(full);
+    if (!stat.isFile()) {
+      throw new Error(`artifact is not a regular file: ${rel}`);
     }
+    const content = readFileSync(full);
+    hasher.update(rel);
+    hasher.update('\0');
+    hasher.update(content);
+    hasher.update('\0');
   }
   return hasher.digest('hex');
 }

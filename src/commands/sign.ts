@@ -1,71 +1,66 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { canonicalString } from '../lib/canonical.js';
-import { sha256Hex, signEd25519Hex } from '../lib/crypto.js';
-import { listArtifactFiles, computeArtifactHash } from '../lib/artifact.js';
-import type { AgentManifest } from '../lib/manifest.js';
-import { getCliVersion } from '../lib/version.js';
+import { readFileSync } from 'node:fs';
+import { isAbsolute, join, resolve } from 'node:path';
+import { derivePublicKeyPem } from '../lib/crypto.js';
+import { publicKeysEqual } from '../lib/trust.js';
+import { signAttestation } from '../lib/sign.js';
+import { createEd25519PrivateKeySigner } from '../lib/signer.js';
 
 const NXTLINQ_DIR = 'nxtlinq';
-const MANIFEST_BASENAME = 'agent.manifest.json';
-const SIG_BASENAME = 'agent.manifest.sig';
+const PRIVATE_KEY_BASENAME = 'private.key';
+const PUBLIC_KEY_BASENAME = 'public.key';
 
-export function runSign(cwd: string): void {
-  const nxtlinqPath = join(cwd, NXTLINQ_DIR);
-  const manifestPath = join(nxtlinqPath, MANIFEST_BASENAME);
-  const privateKeyPath = join(nxtlinqPath, 'private.key');
+export interface SignCommandOptions {
+  privateKeyPath?: string;
+}
 
-  let manifestRaw: string;
-  let privateKeyPem: string;
+function readKey(path: string, label: string): string {
   try {
-    manifestRaw = readFileSync(manifestPath, 'utf8');
-    privateKeyPem = readFileSync(privateKeyPath, 'utf8');
-  } catch (e) {
-    const err = e as NodeJS.ErrnoException;
-    if (err.code === 'ENOENT') {
-      if (err.path === manifestPath) {
-        console.error('Error:', join(NXTLINQ_DIR, MANIFEST_BASENAME), 'not found. Run "nxtlinq-attest init" first.');
-      } else {
-        console.error('Error:', join(NXTLINQ_DIR, 'private.key'), 'not found. Run "nxtlinq-attest init" first.');
-      }
-      process.exit(1);
+    return readFileSync(path, 'utf8');
+  } catch (cause) {
+    const error = cause as NodeJS.ErrnoException;
+    if (error.code === 'ENOENT') throw new Error(`${label} not found`, { cause });
+    throw new Error(`${label} is unreadable`, { cause });
+  }
+}
+
+export async function runSign(cwd: string, options: SignCommandOptions = {}): Promise<void> {
+  const projectRoot = resolve(cwd);
+  const privateKeyPath = options.privateKeyPath === undefined
+    ? join(projectRoot, NXTLINQ_DIR, PRIVATE_KEY_BASENAME)
+    : isAbsolute(options.privateKeyPath)
+      ? options.privateKeyPath
+      : resolve(projectRoot, options.privateKeyPath);
+  const publicKeyPath = join(projectRoot, NXTLINQ_DIR, PUBLIC_KEY_BASENAME);
+  const privateKeyPem = readKey(
+    privateKeyPath,
+    options.privateKeyPath === undefined
+      ? join(NXTLINQ_DIR, PRIVATE_KEY_BASENAME)
+      : `private key ${privateKeyPath}`,
+  );
+  const publicKeyPem = readKey(publicKeyPath, join(NXTLINQ_DIR, PUBLIC_KEY_BASENAME));
+
+  try {
+    const derivedPublicKeyPem = derivePublicKeyPem(privateKeyPem);
+    if (!publicKeysEqual(derivedPublicKeyPem, publicKeyPem)) {
+      throw new Error('private key does not match nxtlinq/public.key');
     }
-    throw e;
+  } catch (error) {
+    throw new Error(
+      `Cannot use signing key: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
   }
 
-  const manifest: AgentManifest = JSON.parse(manifestRaw) as AgentManifest;
-  if (!manifest.name || !manifest.version || !Array.isArray(manifest.scope)) {
-    console.error('Error: manifest must have name, version, and scope.');
-    process.exit(1);
-  }
-
-  // 1) Artifact: list files, then hash and set count
-  const artifactFiles = listArtifactFiles(cwd);
-  manifest.artifactHash = computeArtifactHash(cwd, artifactFiles);
-  manifest.artifactFileCount = artifactFiles.length;
-
-  // 2) Set issuedAt to current time (time of this signing)
-  manifest.issuedAt = Math.floor(Date.now() / 1000);
-
-  // 3) Record CLI version used for this sign
-  manifest.attestCliVersion = getCliVersion();
-
-  // 4) Content hash = SHA256(canonical(manifest without contentHash))
-  const { contentHash: _drop, ...manifestForHash } = manifest;
-  const canonical = canonicalString(manifestForHash);
-  manifest.contentHash = sha256Hex(canonical);
-
-  // 5) Write manifest (with contentHash, artifactHash, issuedAt, attestCliVersion)
-  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
-
-  // 6) Sign the contentHash (so any change to manifest invalidates signature)
-  const signatureHex = signEd25519Hex(manifest.contentHash, privateKeyPem);
-  const sigPath = join(nxtlinqPath, SIG_BASENAME);
-  writeFileSync(sigPath, signatureHex, 'utf8');
+  const keyLabel = options.privateKeyPath === undefined ? 'local-project-key' : privateKeyPath;
+  const result = await signAttestation({
+    projectRoot,
+    signer: createEd25519PrivateKeySigner(privateKeyPem, keyLabel),
+  });
 
   console.log('Signed manifest and artifact.');
-  console.log('  contentHash:', manifest.contentHash.slice(0, 16) + '...');
-  console.log('  artifactHash:', manifest.artifactHash.slice(0, 16) + '...');
-  console.log('  artifactFileCount:', manifest.artifactFileCount);
-  console.log('  signature:', join(NXTLINQ_DIR, SIG_BASENAME));
+  console.log('  contentHash:', result.contentHash.slice(0, 16) + '...');
+  console.log('  artifactHash:', result.artifactHash.slice(0, 16) + '...');
+  console.log('  artifactFileCount:', result.artifactFileCount);
+  console.log('  signer:', result.signerKeyId);
+  console.log('  signature:', join(NXTLINQ_DIR, 'agent.manifest.sig'));
 }

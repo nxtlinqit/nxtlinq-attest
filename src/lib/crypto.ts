@@ -1,4 +1,4 @@
-import { createHash, sign, verify, generateKeyPairSync } from 'node:crypto';
+import { createHash, createPublicKey, sign, verify, generateKeyPairSync } from 'node:crypto';
 
 const HASH_ALGO = 'sha256';
 
@@ -27,4 +27,10 @@ export function generateEd25519KeyPair(): { privateKeyPem: string; publicKeyPem:
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   });
   return { privateKeyPem: privateKey, publicKeyPem: publicKey };
+}
+
+export function derivePublicKeyPem(privateKeyPem: string): string {
+  return createPublicKey(privateKeyPem)
+    .export({ type: 'spki', format: 'pem' })
+    .toString();
 }
