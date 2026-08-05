@@ -12,7 +12,7 @@ export interface AgentManifest {
   capabilities?: Capability[];
   issuedAt: number | string;
   publicKey: string;
-  /** Optional operational identity hint; verifier trust-store keyId remains authoritative. */
+  /** Required by trust-store verification; selects the authoritative external key. */
   signerKeyId?: string;
   contentHash: string;
   artifactHash: string;

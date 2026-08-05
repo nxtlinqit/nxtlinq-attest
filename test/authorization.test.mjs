@@ -36,6 +36,7 @@ function fixture() {
     ],
     issuedAt: 1_700_000_000,
     publicKey: keys.publicKeyPem.trim(),
+    signerKeyId: 'company-owner',
     artifactHash: computeArtifactHash(root, artifactFiles),
     artifactFileCount: artifactFiles.length,
     contentHash: '',
@@ -122,15 +123,13 @@ test('denied handlers run zero times and allowed handlers run exactly once', asy
   assert.equal(calls, 1);
 });
 
-test('a project cannot replace its public key to create its own authorization context', () => {
+test('a project public.key cannot override the trust-store authorization key', () => {
   const value = fixture();
   const attacker = generateEd25519KeyPair();
   writeFileSync(join(value.root, 'nxtlinq', 'public.key'), attacker.publicKeyPem);
 
-  assert.throws(
-    () => contextFor(value),
-    (error) => error?.code === 'public_key_mismatch',
-  );
+  const context = contextFor(value);
+  assert.equal(context.attestation.signer.keyId, 'company-owner');
 });
 
 test('an immutable look-alike cannot impersonate verified authorization data', () => {

@@ -31,6 +31,7 @@ export async function runSign(cwd: string, options: SignCommandOptions = {}): Pr
       ? options.privateKeyPath
       : resolve(projectRoot, options.privateKeyPath);
   const publicKeyPath = join(projectRoot, NXTLINQ_DIR, PUBLIC_KEY_BASENAME);
+  const manifestPath = join(projectRoot, NXTLINQ_DIR, 'agent.manifest.json');
   const privateKeyPem = readKey(
     privateKeyPath,
     options.privateKeyPath === undefined
@@ -51,7 +52,16 @@ export async function runSign(cwd: string, options: SignCommandOptions = {}): Pr
     );
   }
 
-  const keyLabel = options.privateKeyPath === undefined ? 'local-project-key' : privateKeyPath;
+  let configuredKeyId: unknown;
+  try {
+    configuredKeyId = JSON.parse(readKey(manifestPath, join(NXTLINQ_DIR, 'agent.manifest.json'))).signerKeyId;
+  } catch (cause) {
+    if (cause instanceof SyntaxError) throw new Error('agent.manifest.json contains invalid JSON', { cause });
+    throw cause;
+  }
+  const keyLabel = typeof configuredKeyId === 'string' && configuredKeyId.length > 0
+    ? configuredKeyId
+    : options.privateKeyPath === undefined ? 'local-project-key' : privateKeyPath;
   const result = await signAttestation({
     projectRoot,
     signer: createEd25519PrivateKeySigner(privateKeyPem, keyLabel),

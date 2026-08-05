@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.0.0 - 2026-08-06
+
+### Changed
+
+- Trust-store verification now requires the signed manifest `signerKeyId` and
+  verifies directly with the public key selected by that exact trust-store ID.
+- Project-local `nxtlinq/public.key` and `manifest.publicKey` remain available
+  for standalone local signing and integrity verification, but are not trust
+  inputs when a trust store is supplied.
+- `signAttestation()` persists the selected signer's key ID in the signed
+  manifest.
+
+### Breaking
+
+- Manifests without `signerKeyId` no longer pass trust-store verification.
+- Trusted signer selection no longer falls back to matching a project-provided
+  public key against trust-store entries.
+
 ## 2.2.0 - 2026-08-05
 
 ### Added

@@ -85,7 +85,7 @@ const trustStore = loadTrustStore('/etc/nxtlinq/trusted-signers.json');
 const attestation = verifyAttestation({
   projectRoot: process.cwd(),
   trustStore,
-  expectedAudience: 'nxtlinq-acp-proxy',
+  expectedAudience: 'nxtlinq-authorization-gateway',
 });
 
 // Safe input for a policy engine after successful verification.
@@ -144,10 +144,17 @@ contain inline PEM keys or paths relative to the trust-store file:
 }
 ```
 
+When a trust store is supplied, `manifest.signerKeyId` selects the signer and
+the signature is verified directly with that trust-store public key. The
+repository-local `nxtlinq/public.key` and `manifest.publicKey` are not trust
+inputs in this mode. They remain part of the standalone local `init`, `sign`,
+and integrity-verification workflow only.
+
 Set `"revoked": true` on a signer to fail closed for manifests signed by that
-key. Without a trust store, `verifyAttestation()` rejects the signer by
-default. `allowUntrustedSigner: true` exists only for explicit legacy
-integrity checks and must not be used for authorization.
+key. A trusted manifest must contain a non-empty `signerKeyId` matching exactly
+one trust-store entry. Without a trust store, `verifyAttestation()` rejects the
+signer by default. `allowUntrustedSigner: true` explicitly enables the local
+`public.key` integrity check and must not be used for authorization.
 
 **Node only.** For **Python or any language**, use the **CLI** instead: run `nxtlinq-attest scope` from the agent project root; it prints the scope array as JSON to stdout (exit 0). Parse stdout once at startup and cache; use it to allow/deny tools. Same CLI works for Node if you prefer not to depend on the package.
 
@@ -169,7 +176,7 @@ For trusted verification:
 ```bash
 nxtlinq-attest verify \
   --trust-store /etc/nxtlinq/trusted-signers.json \
-  --audience nxtlinq-acp-proxy
+  --audience nxtlinq-authorization-gateway
 ```
 
 Running `verify` without `--trust-store` preserves the previous local
@@ -289,7 +296,7 @@ nxtlinq-attest verify
 | **capabilities** | Optional | Structured, protocol-neutral authorization ceiling for policy-aware consumers. Existing `scope`-only manifests remain supported. |
 | **issuedAt** | Optional | Unix timestamp when the manifest was created. Init sets this; you can leave it or update it. |
 | **publicKey** | Prohibited | Filled by init. Do not edit. |
-| **signerKeyId** | Optional | Operational identity hint set by public-key-only init. The verifier's external trust store remains authoritative. |
+| **signerKeyId** | Required for trusted verification | Selects the authoritative external trust-store entry; local-only verification does not require it. |
 | **contentHash** | Prohibited | Set by `sign`. Do not edit. |
 | **artifactHash** | Prohibited | Set by `sign`. Do not edit. |
 

@@ -47,6 +47,7 @@ function signedFixture(overrides = {}) {
     scope: ['tool:Search'],
     issuedAt: 1_700_000_000,
     publicKey: keys.publicKeyPem.trim(),
+    signerKeyId: 'project-owner',
     artifactHash: computeArtifactHash(root, artifactFiles),
     artifactFileCount: artifactFiles.length,
     contentHash: '',
@@ -172,9 +173,9 @@ test('sign safely upgrades a legacy manifest that is missing publicKey', async (
   assert.equal(upgraded.publicKey, keys.publicKeyPem.trim());
   const verified = verifyAttestation({
     projectRoot: root,
-    trustStore: trustStore(keys.publicKeyPem),
+    allowUntrustedSigner: true,
   });
-  assert.equal(verified.signer.trusted, true);
+  assert.equal(verified.signer.trusted, false);
 });
 
 test('sign refuses mismatched private and public keys', async () => {
@@ -213,7 +214,7 @@ test('async external signer receives only the content digest and is verified bef
   assert.equal(result.signerKeyId, 'kms/project-owner/1');
   const verified = verifyAttestation({
     projectRoot: fixture.root,
-    trustStore: trustStore(fixture.publicKeyPem),
+    trustStore: trustStore(fixture.publicKeyPem, { keyId: 'kms/project-owner/1' }),
   });
   assert.equal(verified.manifestDigest, result.contentHash);
 
@@ -301,7 +302,7 @@ test('init CLI supports a public-key-only project identity', () => {
   assert.equal(signed.status, 0, signed.stderr);
   const verified = verifyAttestation({
     projectRoot,
-    trustStore: trustStore(keys.publicKeyPem),
+    trustStore: trustStore(keys.publicKeyPem, { keyId: 'project-owner-2026' }),
   });
   assert.equal(verified.manifest.signerKeyId, 'project-owner-2026');
 
@@ -320,7 +321,7 @@ test('secure verification requires an externally configured signer', () => {
   assertCode('signer_untrusted', () => verifyAttestation({ projectRoot: fixture.root }));
 
   const anotherKey = generateEd25519KeyPair();
-  assertCode('signer_untrusted', () => verifyAttestation({
+  assertCode('signature_invalid', () => verifyAttestation({
     projectRoot: fixture.root,
     trustStore: trustStore(anotherKey.publicKeyPem),
     allowUntrustedSigner: true,
@@ -333,17 +334,38 @@ test('secure verification requires an externally configured signer', () => {
   assert.equal(compatibility.signer.trusted, false);
 });
 
-test('replacing the project key and re-signing does not bypass a pinned owner key', () => {
+test('trust-store verification ignores the project public.key and uses the key selected by signerKeyId', () => {
   const fixture = signedFixture();
   const ownerTrust = trustStore(fixture.publicKeyPem);
   const attacker = generateEd25519KeyPair();
-  fixture.manifest.publicKey = attacker.publicKeyPem.trim();
   writeFileSync(join(fixture.root, 'nxtlinq', 'public.key'), attacker.publicKeyPem);
-  signManifest(fixture.root, fixture.manifest, attacker.privateKeyPem);
 
-  assertCode('signer_untrusted', () => verifyAttestation({
+  const verified = verifyAttestation({
     projectRoot: fixture.root,
     trustStore: ownerTrust,
+  });
+  assert.equal(verified.signer.keyId, 'project-owner');
+
+  assertCode('public_key_mismatch', () => verifyAttestation({
+    projectRoot: fixture.root,
+    allowUntrustedSigner: true,
+  }));
+});
+
+test('trust-store verification requires signerKeyId and verifies with that external key', () => {
+  const missingKeyId = signedFixture();
+  delete missingKeyId.manifest.signerKeyId;
+  signManifest(missingKeyId.root, missingKeyId.manifest, missingKeyId.privateKeyPem);
+  assertCode('signer_untrusted', () => verifyAttestation({
+    projectRoot: missingKeyId.root,
+    trustStore: trustStore(missingKeyId.publicKeyPem),
+  }));
+
+  const fixture = signedFixture();
+  const attacker = generateEd25519KeyPair();
+  assertCode('signature_invalid', () => verifyAttestation({
+    projectRoot: fixture.root,
+    trustStore: trustStore(attacker.publicKeyPem),
   }));
 });
 
@@ -371,11 +393,11 @@ test('revoked signer, empty scope, expiry, and audience all fail closed', () => 
   assertCode('audience_mismatch', () => verifyAttestation({
     projectRoot: audience.root,
     trustStore: trustStore(audience.publicKeyPem),
-    expectedAudience: 'nxtlinq-acp-proxy',
+    expectedAudience: 'nxtlinq-authorization-gateway',
   }));
 });
 
-test('manifest, public-key, and artifact tampering fail closed', () => {
+test('manifest and artifact tampering fail closed; local-key tampering fails in local mode', () => {
   const artifact = signedFixture();
   writeFileSync(join(artifact.root, 'agent-source.txt'), 'tampered source\n');
   assertCode('artifact_integrity', () => verifyAttestation({
@@ -398,7 +420,7 @@ test('manifest, public-key, and artifact tampering fail closed', () => {
   writeFileSync(join(key.root, 'nxtlinq', 'public.key'), anotherKey.publicKeyPem);
   assertCode('public_key_mismatch', () => verifyAttestation({
     projectRoot: key.root,
-    trustStore: trustStore(key.publicKeyPem),
+    allowUntrustedSigner: true,
   }));
 });
 
@@ -411,7 +433,7 @@ test('artifact hashing fails instead of skipping a missing covered file', () => 
 });
 
 test('trust stores support external key files relative to the store', () => {
-  const fixture = signedFixture();
+  const fixture = signedFixture({ signerKeyId: 'owner-from-file' });
   const configDir = mkdtempSync(join(tmpdir(), 'nxtlinq-attest-trust-'));
   writeFileSync(join(configDir, 'owner.pem'), fixture.publicKeyPem);
   writeFileSync(
@@ -426,7 +448,7 @@ test('trust stores support external key files relative to the store', () => {
 });
 
 test('verify CLI distinguishes trusted verification from integrity-only compatibility', () => {
-  const fixture = signedFixture();
+  const fixture = signedFixture({ signerKeyId: 'cli-owner' });
   const configDir = mkdtempSync(join(tmpdir(), 'nxtlinq-attest-cli-trust-'));
   const trustPath = join(configDir, 'trust.json');
   writeFileSync(

@@ -127,6 +127,7 @@ export async function signAttestation(
   }
 
   const artifactFiles = listArtifactFiles(projectRoot);
+  manifest.signerKeyId = options.signer.keyId;
   manifest.artifactHash = computeArtifactHash(projectRoot, artifactFiles);
   manifest.artifactFileCount = artifactFiles.length;
   manifest.issuedAt = Math.floor(Date.now() / 1000);

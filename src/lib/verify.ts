@@ -199,24 +199,15 @@ function parseManifest(raw: string): AgentManifest {
   return manifest;
 }
 
-function findTrustedSigner(publicKeyPem: string, signers: readonly TrustedSigner[]): TrustedSigner | undefined {
-  let match: TrustedSigner | undefined;
-  for (const signer of signers) {
-    try {
-      if (publicKeysEqual(publicKeyPem, signer.publicKey)) {
-        // A revoked record always wins over a duplicate active record.
-        if (signer.revoked) return signer;
-        match = match ?? signer;
-      }
-    } catch (cause) {
-      throw new AttestationVerificationError(
-        'signer_untrusted',
-        `trusted signer ${signer.keyId} contains an invalid public key`,
-        { cause },
-      );
-    }
+function findTrustedSigner(keyId: string, signers: readonly TrustedSigner[]): TrustedSigner | undefined {
+  const matches = signers.filter((signer) => signer.keyId === keyId);
+  if (matches.length > 1) {
+    throw new AttestationVerificationError(
+      'signer_untrusted',
+      `trust store contains duplicate signer keyId: ${keyId}`,
+    );
   }
-  return match;
+  return matches[0];
 }
 
 function verifyTimeAndAudience(manifest: AgentManifest, options: VerifyAttestationOptions): void {
@@ -253,15 +244,14 @@ function verifyTimeAndAudience(manifest: AgentManifest, options: VerifyAttestati
 
 /**
  * Fully verify a signed project attestation and return an immutable authorization input.
- * A trust store is required unless allowUntrustedSigner is explicitly enabled for
- * legacy integrity-only verification.
+ * With a trust store, signerKeyId selects the authoritative external public key.
+ * Without one, allowUntrustedSigner explicitly enables local public.key verification.
  */
 export function verifyAttestation(options: VerifyAttestationOptions = {}): VerifiedAttestation {
   const projectRoot = resolve(options.projectRoot ?? process.cwd());
   const nxtlinqPath = join(projectRoot, NXTLINQ_DIR);
   const manifestRaw = readRequired(join(nxtlinqPath, MANIFEST_BASENAME), MANIFEST_BASENAME);
   const signatureHex = readRequired(join(nxtlinqPath, SIG_BASENAME), SIG_BASENAME).trim();
-  const publicKeyPem = readRequired(join(nxtlinqPath, PUBLIC_KEY_BASENAME), PUBLIC_KEY_BASENAME);
   const manifest = parseManifest(manifestRaw);
 
   if (!/^[0-9a-f]{128}$/.test(signatureHex)) {
@@ -275,16 +265,47 @@ export function verifyAttestation(options: VerifyAttestationOptions = {}): Verif
     throw new AttestationVerificationError('scope_empty', 'manifest scope must not be empty');
   }
 
-  try {
-    if (!publicKeysEqual(manifest.publicKey, publicKeyPem)) {
+  let verificationPublicKeyPem: string;
+  let trustedSigner: TrustedSigner | undefined;
+  if (options.trustStore !== undefined) {
+    if (manifest.signerKeyId === undefined) {
       throw new AttestationVerificationError(
-        'public_key_mismatch',
-        'manifest publicKey does not match nxtlinq/public.key',
+        'signer_untrusted',
+        'manifest signerKeyId is required when a trust store is configured',
       );
     }
-  } catch (cause) {
-    if (cause instanceof AttestationVerificationError) throw cause;
-    throw new AttestationVerificationError('manifest_invalid', 'manifest contains an invalid publicKey', { cause });
+    trustedSigner = findTrustedSigner(manifest.signerKeyId, options.trustStore.trustedSigners);
+    if (!trustedSigner) {
+      throw new AttestationVerificationError(
+        'signer_untrusted',
+        `manifest signer ${manifest.signerKeyId} is not present in the configured trust store`,
+      );
+    }
+    if (trustedSigner.revoked) {
+      throw new AttestationVerificationError(
+        'signer_revoked',
+        `manifest signer ${trustedSigner.keyId} is revoked`,
+      );
+    }
+    verificationPublicKeyPem = trustedSigner.publicKey;
+  } else {
+    const localPublicKeyPem = readRequired(join(nxtlinqPath, PUBLIC_KEY_BASENAME), PUBLIC_KEY_BASENAME);
+    try {
+      if (!publicKeysEqual(manifest.publicKey, localPublicKeyPem)) {
+        throw new AttestationVerificationError(
+          'public_key_mismatch',
+          'manifest publicKey does not match nxtlinq/public.key',
+        );
+      }
+    } catch (cause) {
+      if (cause instanceof AttestationVerificationError) throw cause;
+      throw new AttestationVerificationError(
+        'manifest_invalid',
+        'manifest or nxtlinq/public.key contains an invalid public key',
+        { cause },
+      );
+    }
+    verificationPublicKeyPem = localPublicKeyPem;
   }
 
   const { contentHash: _drop, ...manifestForHash } = manifest;
@@ -296,7 +317,7 @@ export function verifyAttestation(options: VerifyAttestationOptions = {}): Verif
     );
   }
   try {
-    if (!verifyEd25519Hex(manifest.contentHash, signatureHex, publicKeyPem)) {
+    if (!verifyEd25519Hex(manifest.contentHash, signatureHex, verificationPublicKeyPem)) {
       throw new AttestationVerificationError('signature_invalid', 'invalid manifest signature');
     }
   } catch (cause) {
@@ -304,10 +325,18 @@ export function verifyAttestation(options: VerifyAttestationOptions = {}): Verif
     throw new AttestationVerificationError('signature_invalid', 'invalid manifest signature', { cause });
   }
 
-  const fingerprint = publicKeyFingerprint(publicKeyPem);
-  const trustedSigner = options.trustStore
-    ? findTrustedSigner(publicKeyPem, options.trustStore.trustedSigners)
-    : undefined;
+  let fingerprint: string;
+  try {
+    fingerprint = publicKeyFingerprint(verificationPublicKeyPem);
+  } catch (cause) {
+    throw new AttestationVerificationError(
+      trustedSigner ? 'signer_untrusted' : 'manifest_invalid',
+      trustedSigner
+        ? `trusted signer ${trustedSigner.keyId} contains an invalid public key`
+        : 'nxtlinq/public.key is invalid',
+      { cause },
+    );
+  }
   if (
     !trustedSigner &&
     (options.trustStore !== undefined || options.allowUntrustedSigner !== true)
@@ -317,13 +346,6 @@ export function verifyAttestation(options: VerifyAttestationOptions = {}): Verif
       'manifest signer is not present in the configured trust store',
     );
   }
-  if (trustedSigner?.revoked) {
-    throw new AttestationVerificationError(
-      'signer_revoked',
-      `manifest signer ${trustedSigner.keyId} is revoked`,
-    );
-  }
-
   verifyTimeAndAudience(manifest, options);
 
   let artifactFiles: string[];
